@@ -3,21 +3,21 @@ import google.generativeai as genai
 import matplotlib.pyplot as plt
 import numpy as np
 import json
+import PyPDF2
+import cv2
+from PIL import Image
 import logging
 import sympy as sp
-import PyPDF2
-from PIL import Image
-import cv2
 
-# Configure API key
+# Configure the API key
 api_key = "AIzaSyBFCRAdNSHw6894aq_56iBNfaDAhZgsIXI"
 genai.configure(api_key=api_key)
 
-# Initialize chat history
+# Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Helper Functions
+# Helper functions
 def clear_cache():
     st.cache_data.clear()
     st.success("Cache cleared successfully!")
@@ -92,6 +92,7 @@ def pencilsketch(inp_img):
     final_img = dodgeV2(img_gray, img_smoothing)
     return final_img
 
+# Chatbot section
 def initialize_chatbot():
     if "chatbot_history" not in st.session_state:
         st.session_state.chatbot_history = []
@@ -100,20 +101,36 @@ def generate_response(user_input):
     prompt = f"""
     You are a friendly and knowledgeable chatbot. 
     Provide detailed and engaging responses to the user's queries. 
-    If the user asks for something specific, try to provide useful and informative answers. 
-    Always be polite and encouraging. 
+    Always be polite and encouraging.
     User: {user_input}
     Chatbot:
     """
     response = genai.generate_text(prompt=prompt)
     return response.result
 
-# Default Page
+def display_chat_history():
+    for entry in st.session_state.chatbot_history:
+        st.markdown(f"**User:** {entry['user']}")
+        st.markdown(f"**Chatbot:** {entry['response']}")
+
+# Default Page with Instructions
 def show_default_page():
-    st.title("Welcome to the OmniAI Toolkit !")
+    st.title("Welcome to the OmniAI Toolkit!")
     st.write("This app provides several exciting features. Use the sidebar to select a feature you want to explore.")
+    
     st.markdown("""
-    <div style='text-align: center; margin-top: 50px;back-ground-color:#07070d';>
+    ## How to Use This App
+    - **Graph Making AI**: Enter a mathematical expression or points to generate graphs.
+    - **Searchable Document Chatbot**: Upload a PDF and ask questions about its content.
+    - **Chatbot**: Interact with an AI chatbot to answer your questions.
+    - **Pencil Sketch Converter**: Upload an image and convert it to a pencil sketch.
+    - **Summary Generator**: Enter text and generate a summary of it.
+    
+    Explore these features from the sidebar!
+    """)
+
+    st.markdown("""
+    <div style='text-align: center; margin-top: 50px;'>
         <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzcgQ6toDLgGTJzH1wY5AjqR0Zk38RBLU7TA&s' width='80' />
         <p>Powered by Ahsan TECH</p>
     </div>
@@ -133,16 +150,17 @@ elif option == "Graph Making AI":
     st.markdown("""
         <style>
         .header {
-            font-size: 2em;
+            font-size: 2.5em;
             font-weight: bold;
             text-align: center;
-            background-color: #f7f7f7;
+            background-color: #4CAF50;
+            color: white;
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
         }
         </style>
-        <div class="header">Graph Generator AI <img src="https://cdn-icons-png.flaticon.com/512/189/189001.png" width="40" /></div>
+        <div class="header">Graph Generator AI</div>
         """, unsafe_allow_html=True)
 
     user_input = st.text_input("Enter a mathematical question (e.g. 'Plot the points (1, 2) and (3, 4)' or 'y = 2x + 3'):")
@@ -196,94 +214,37 @@ elif option == "Searchable Document Chatbot":
                         "response_mime_type": "text/plain",
                     },
                 ).start_chat(history=[])
-                response = chat_session.send_message(f"Document: {document_text}\n\nQuestion: {user_question}")
-                st.subheader("🤖 Chatbot Response")
-                st.markdown(f"""
-                <div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>
-                    <strong>User Question:</strong> {user_question} <br><br>
-                    <strong>AI Response:</strong> {response.text}
-                </div>
-                """, unsafe_allow_html=True)
-
-        if st.button("Clear Chat"):
-            st.cache_data.clear()
-
-    else:
-        st.info("💡 Upload a PDF to start the chat!")
-
-    st.markdown("---")
-    st.write(
-        "Made with ❤️ by Ahsan TECH"
-    )
+                response = chat_session.continue_chat(user_question)
+                st.success(f"Response: {response}")
 
 elif option == "Chatbot":
-    st.subheader("🤖 Chatbot")
-
-    # Initialize chatbot
     initialize_chatbot()
-
-    # Chat history display
-    if st.session_state.chatbot_history:
-        for entry in st.session_state.chatbot_history:
-            st.write(f"**User:** {entry['user']}")
-            st.write(f"**Chatbot:** {entry['response']}")
-    
-    # User input
-    user_message = st.text_input("Type your message here...", "")
-    if st.button("Send"):
-        if user_message:
-            response_text = generate_response(user_message)
-            st.session_state.chatbot_history.append({"user": user_message, "response": response_text})
-            st.write(f"**Chatbot:** {response_text}")
-        else:
-            st.warning("Please type a message before sending.")
-
-    st.markdown("""
-        <div style='text-align: center; margin-top: 50px;'>
-            <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzcgQ6toDLgGTJzH1wY5AjqR0Zk38RBLU7TA&s' width='80' />
-            <p>Powered by Ahsan TECH</p>
-        </div>
-        """, unsafe_allow_html=True)
+    user_input = st.text_input("💬 Ask something:")
+    if st.button("Ask Chatbot"):
+        if user_input:
+            response = generate_response(user_input)
+            st.session_state.chatbot_history.append({"user": user_input, "response": response})
+            display_chat_history()
 
 elif option == "Pencil Sketch (Feature 4)":
-    st.title("Pencil Sketch Converter")
+    st.subheader("🖼 Pencil Sketch Converter")
+    uploaded_img = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
 
-    uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
-    
-    if uploaded_image:
-        st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
+    if uploaded_img is not None:
+        input_img = Image.open(uploaded_img)
+        st.image(input_img, caption="Uploaded Image", use_column_width=True)
 
-        # Convert image to pencil sketch
-        image = Image.open(uploaded_image).convert("RGB")
-        img_np = np.array(image)
-        pencil_sketch = pencilsketch(img_np)
-        st.image(pencil_sketch, caption="Pencil Sketch", use_column_width=True)
-
-    st.markdown("""
-        <div style='text-align: center; margin-top: 50px;'>
-            <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzcgQ6toDLgGTJzH1wY5AjqR0Zk38RBLU7TA&s' width='80' />
-            <p>Powered by Ahsan TECH</p>
-        </div>
-        """, unsafe_allow_html=True)
+        if st.button("Convert to Pencil Sketch"):
+            sketched_img = pencilsketch(np.array(input_img))
+            st.image(sketched_img, caption="Pencil Sketch", use_column_width=True)
 
 elif option == "Summary Generator":
-    st.title("Summary Generator")
-
-    # Text area for input
-    user_text = st.text_area("Enter the text to summarize:", "")
-
+    st.subheader("📄 Summary Generator")
+    text_input = st.text_area("Enter text to summarize:")
     if st.button("Generate Summary"):
-        if user_text:
-            prompt = f"Summarize the following text:\n\n{user_text}"
-            response = genai.generate_text(prompt=prompt)
-            st.subheader("Summary:")
-            st.write(response.result)
-        else:
-            st.warning("Please enter some text to summarize.")
+        if text_input:
+            prompt = f"Summarize the following text:\n\n{text_input}"
+            summary = genai.generate_text(prompt=prompt)
+            st.subheader("📝 Summary")
+            st.write(summary.result)
 
-    st.markdown("""
-        <div style='text-align: center; margin-top: 50px;'>
-            <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzcgQ6toDLgGTJzH1wY5AjqR0Zk38RBLU7TA&s' width='80' />
-            <p>Powered by Ahsan TECH</p>
-        </div>
-        """, unsafe_allow_html=True)
