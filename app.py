@@ -16,6 +16,12 @@ genai.configure(api_key=api_key)
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "chatbot_history" not in st.session_state:
+    st.session_state.chatbot_history = []
+if "user_input" not in st.session_state:
+    st.session_state.user_input = ""
+if "chatbot_response" not in st.session_state:
+    st.session_state.chatbot_response = ""
 
 # Helper functions
 def clear_cache():
@@ -92,11 +98,6 @@ def pencilsketch(inp_img):
     final_img = dodgeV2(img_gray, img_smoothing)
     return final_img
 
-# Chatbot section
-def initialize_chatbot():
-    if "chatbot_history" not in st.session_state:
-        st.session_state.chatbot_history = []
-
 def generate_response(user_input):
     prompt = f"""
     You are a friendly and knowledgeable chatbot. 
@@ -108,10 +109,9 @@ def generate_response(user_input):
     response = genai.generate_text(prompt=prompt)
     return response.result
 
-def display_chat_history():
-    for entry in st.session_state.chatbot_history:
-        st.markdown(f"**User:** {entry['user']}")
-        st.markdown(f"**Chatbot:** {entry['response']}")
+def clear_chat_state():
+    st.session_state.user_input = ""
+    st.session_state.chatbot_response = ""
 
 # Default Page with Instructions
 def show_default_page():
@@ -210,41 +210,57 @@ elif option == "Searchable Document Chatbot":
                         "temperature": 1,
                         "top_p": 0.95,
                         "top_k": 64,
-                        "max_output_tokens": 8192,
-                        "response_mime_type": "text/plain",
-                    },
-                ).start_chat(history=[])
-                response = chat_session.continue_chat(user_question)
-                st.success(f"Response: {response}")
+                        "max_tokens": 512,
+                    }
+                )
+                prompt = f"""
+                Extract a detailed answer from the following document based on the user question. 
+                Document: {document_text}
+                Question: {user_question}
+                Answer:
+                """
+                response = chat_session.generate_text(prompt=prompt)
+                st.write(response.result)
 
 elif option == "Chatbot":
-    initialize_chatbot()
-    user_input = st.text_input("💬 Ask something:")
-    if st.button("Ask Chatbot"):
+    st.subheader("🤖 Chatbot")
+    user_input = st.text_input("💬 Type your message:")
+
+    if st.button("Send"):
         if user_input:
+            st.session_state.messages.append(f"You: {user_input}")
             response = generate_response(user_input)
-            st.session_state.chatbot_history.append({"user": user_input, "response": response})
-            display_chat_history()
+            st.session_state.messages.append(f"Chatbot: {response}")
+
+    for message in st.session_state.messages:
+        st.write(message)
+
+    if st.button("Clear Chat"):
+        clear_chat_state()
 
 elif option == "Pencil Sketch (Feature 4)":
-    st.subheader("🖼 Pencil Sketch Converter")
-    uploaded_img = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+    st.subheader("✏️ Pencil Sketch Converter")
+    uploaded_image = st.file_uploader("Choose an image file", type=["jpg", "jpeg", "png"])
 
-    if uploaded_img is not None:
-        input_img = Image.open(uploaded_img)
-        st.image(input_img, caption="Uploaded Image", use_column_width=True)
+    if uploaded_image:
+        img = Image.open(uploaded_image)
+        img_cv = np.array(img)
+        sketch_img = pencilsketch(img_cv)
+        st.image(sketch_img, caption="Pencil Sketch", use_column_width=True)
 
-        if st.button("Convert to Pencil Sketch"):
-            sketched_img = pencilsketch(np.array(input_img))
-            st.image(sketched_img, caption="Pencil Sketch", use_column_width=True)
+    if st.button("Clear Cache"):
+        clear_cache()
 
 elif option == "Summary Generator":
-    st.subheader("📄 Summary Generator")
-    text_input = st.text_area("Enter text to summarize:")
-    if st.button("Generate Summary"):
-        if text_input:
-            prompt = f"Summarize the following text:\n\n{text_input}"
-            summary = genai.generate_text(prompt=prompt)
-            st.subheader("📝 Summary")
-            st.write(summary.result)
+    st.subheader("📝 Summary Generator")
+    input_text = st.text_area("Enter text to summarize:")
 
+    if st.button("Generate Summary"):
+        if input_text:
+            prompt = f"Summarize the following text: {input_text}"
+            response = genai.generate_text(prompt=prompt)
+            st.subheader("Summary")
+            st.write(response.result)
+
+    if st.button("Clear Cache"):
+        clear_cache()
