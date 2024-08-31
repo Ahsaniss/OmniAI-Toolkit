@@ -1,0 +1,8 @@
+streamlit
+google-generativeai
+matplotlib
+numpy
+sympy
+PyPDF2
+Pillow
+opencv-python-headless
