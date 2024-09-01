@@ -210,57 +210,52 @@ elif option == "Searchable Document Chatbot":
                         "temperature": 1,
                         "top_p": 0.95,
                         "top_k": 64,
-                        "max_tokens": 512,
+                        "max_output_tokens": 8192,
+                        "response_mime_type": "text/plain",
                     }
-                )
-                prompt = f"""
-                Extract a detailed answer from the following document based on the user question. 
-                Document: {document_text}
-                Question: {user_question}
-                Answer:
-                """
-                response = chat_session.generate_text(prompt=prompt)
-                st.write(response.result)
+                ).start_chat()
+                response = chat_session.send_message(f"Document: {document_text}\n\nQuestion: {user_question}")
+                st.subheader("🤖 Chatbot Response")
+                st.markdown(f"""
+                <div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>
+                    {response.text}
+                </div>
+                """, unsafe_allow_html=True)
 
 elif option == "Chatbot":
-    st.subheader("🤖 Chatbot")
-    user_input = st.text_input("💬 Type your message:")
-
+    st.subheader("🤖 AI Chatbot")
+    user_input = st.text_input("💬 Ask me anything")
+    
     if st.button("Send"):
         if user_input:
-            st.session_state.messages.append(f"You: {user_input}")
             response = generate_response(user_input)
-            st.session_state.messages.append(f"Chatbot: {response}")
-
-    for message in st.session_state.messages:
-        st.write(message)
-
+            st.markdown(f"**Chatbot:** {response}")
+        else:
+            st.warning("Please enter a question.")
+    
     if st.button("Clear Chat"):
         clear_chat_state()
 
 elif option == "Pencil Sketch (Feature 4)":
-    st.subheader("✏️ Pencil Sketch Converter")
-    uploaded_image = st.file_uploader("Choose an image file", type=["jpg", "jpeg", "png"])
+    st.subheader("🖼️ Pencil Sketch Converter")
+    uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
     if uploaded_image:
-        img = Image.open(uploaded_image)
-        img_cv = np.array(img)
-        sketch_img = pencilsketch(img_cv)
-        st.image(sketch_img, caption="Pencil Sketch", use_column_width=True)
+        image = np.array(Image.open(uploaded_image))
+        st.image(image, caption="Original Image", use_column_width=True)
 
-    if st.button("Clear Cache"):
-        clear_cache()
+        sketch = pencilsketch(image)
+        st.image(sketch, caption="Pencil Sketch", use_column_width=True)
 
 elif option == "Summary Generator":
     st.subheader("📝 Summary Generator")
-    input_text = st.text_area("Enter text to summarize:")
+    text_input = st.text_area("Enter text to summarize")
 
     if st.button("Generate Summary"):
-        if input_text:
-            prompt = f"Summarize the following text: {input_text}"
-            response = genai.generate_text(prompt=prompt)
-            st.subheader("Summary")
-            st.write(response.result)
-
-    if st.button("Clear Cache"):
-        clear_cache()
+        if text_input:
+            summary_prompt = f"Summarize the following text:\n{text_input}"
+            summary_response = genai.generate_text(prompt=summary_prompt)
+            st.subheader("Generated Summary")
+            st.write(summary_response.result)
+        else:
+            st.warning("Please enter text to summarize.")
