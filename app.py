@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure Gemini API
+# Configure Gemini API
 api_key = "AIzaSyAF6rrJQCuU8k6uHBAm65wn3M43rtJTpsI"
 
 # Configure the Gemini AI model
@@ -108,17 +109,27 @@ def extract_text_from_pdf(pdf_file):
 def dodgeV2(x, y):
     return cv2.divide(x, 255 - y, scale=256)
 
-
-def generate_response(user_input):
+# Updated generate_response function to include PDF text
+def generate_response(user_input, pdf_text=None):
     try:
         model = genai.GenerativeModel('gemini-pro')
-        prompt = f"""
-        You are a friendly and knowledgeable chatbot. 
-        Provide detailed and engaging responses to the user's queries. 
-        Always be polite and encouraging.
-        User: {user_input}
-        Chatbot:
-        """
+        if pdf_text:
+            # Limit the PDF text to avoid exceeding the token limit of the AI model
+            prompt = f"""
+            You are a knowledgeable assistant that helps users by answering questions based on the provided document.
+            Only provide answers that are strictly related to the content of the following PDF:
+            PDF Content: {pdf_text[:3000]}  # Truncate to 3000 characters
+            User Question: {user_input}
+            Answer based only on the PDF content:
+            """
+        else:
+            prompt = f"""
+            You are a friendly and knowledgeable chatbot. 
+            Provide detailed and engaging responses to the user's queries.
+            User: {user_input}
+            Chatbot:
+            """
+        
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
@@ -250,9 +261,7 @@ elif option == "Searchable Document Chatbot":
 
                 if st.button("Generate Answer"):
                     st.write("Generating...")
-                    # Process the user query with AI
-                    
-                    answer = generate_response(user_query)
+                    answer = generate_response(user_query, pdf_text=document_text)
                     st.subheader("🤖 AI Answer")
                     st.write(answer)
 
@@ -270,14 +279,14 @@ elif option == "Chatbot":
         chatbot_response = generate_response(user_input)
         st.write(f"AI: {chatbot_response}")
         
-  
 
 elif option == "Summary Generator":
+    st.subheader("📄 Summary Generator")
+    input_text = st.text_area("Enter text to summarize:")
     
-    st.subheader("📝 Summary Generator")
-    user_text = st.text_area("Enter text to summarize:")
-
     if st.button("Generate Summary"):
-        summary = generate_response(f"Summarize the following text: {user_text}")
-        st.subheader("Summary")
-        st.write(summary)
+        if input_text:
+            prompt = f"Summarize the following text: {input_text}"
+            summary = generate_response(prompt)
+            st.subheader("Summary")
+            st.write(summary)
