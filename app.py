@@ -15,7 +15,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure Gemini API
-genai.configure(api_key=os.getenv("api-key"))
+api_key = "AIzaSyAF6rrJQCuU8k6uHBAm65wn3M43rtJTpsI"
+
+# Configure the Gemini AI model
+genai.configure(api_key=api_key)
 
 # Initialize session state
 if "messages" not in st.session_state:
