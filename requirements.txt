@@ -4,6 +4,6 @@ matplotlib
 numpy
 sympy
 PyPDF2
-Pillow
 opencv-python-headless
-dotenv
+Pillow
+python-dotenv
